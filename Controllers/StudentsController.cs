@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TeacherApi.Data;
 using TeacherApi.Models;
+using TeacherApi.Services.Interfaces;
 
 namespace TeacherApi.Controllers
 {
@@ -10,53 +11,45 @@ namespace TeacherApi.Controllers
     [Microsoft.AspNetCore.Components.Route("api/[controller]")]
     public class StudentsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IStudentService _studentService;
 
-        public StudentsController(SchoolDbContext context)
+        public StudentsController(IStudentService studentService)
         {
-            _context = context;
+            _studentService = studentService;
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateStudent([FromBody] Student student)
+        public async Task<IActionResult> CreateStudent(string name, int classroomId)
         {
-            student.Id = 0;
+            var student = new Student
+            {
+                Name = name,
+                ClassroomId = classroomId
+            };
+            var created = await _studentService.CreateStudentAsync(student);
 
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync();
-
-            var response = new
+            return Ok(new
             {
                 message = "Student created successfully.",
                 student = new
                 {
-                    student.Id,
-                    student.Name
+                    created.Id,
+                    created.Name
                 }
-            };
-
-            return Ok(response);
+            });
+            
         }
 
       
         [HttpGet("{id}/teacher-name")]
         public async Task<IActionResult> GetTeacherNameForStudent(int id)
         {
-            var student = await _context.Students
-                .Include(s => s.Classroom)
-                .ThenInclude(c => c.Teacher)
-                .FirstOrDefaultAsync(s => s.Id == id);
+            var teacherName = await _studentService.GetTeacherNameForStudentAsync(id);
 
-            if (student == null)
-                return NotFound(new { message = $"Student with ID {id} not found." });
-
-            if (student.Classroom?.Teacher == null)
+            if (teacherName == null)
                 return NotFound(new { message = $"No teacher assigned to student with ID {id}." });
 
-            return Ok(new
-            {
-                teacherName = student.Classroom.Teacher.Name
-            });
+            return Ok(new { teacherName });
         }
     }
 }
