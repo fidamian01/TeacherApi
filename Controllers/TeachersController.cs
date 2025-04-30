@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TeacherApi.Data;
 using TeacherApi.Models;
@@ -15,24 +15,27 @@ public class TeachersController : ControllerBase
         _teacherService = teacherService;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> CreateTeacher([FromBody] Teacher teacher)
+    [HttpPost("create")]
+    public async Task<IActionResult> CreateTeacher(string name)
     {
+        var teacher = new Teacher
+        {
+            Name = name
+        };
+
         var createdTeacher = await _teacherService.CreateTeacherAsync(teacher);
 
-        var response = new
+        return Ok(new
         {
-            message = "Teacher created successfully",
+            message = "Teacher created successfully.",
             teacher = new
             {
                 createdTeacher.Id,
+                createdTeacher.Name
             }
-
-        };
-
-
-        return Ok(response);
+        });
     }
+
 
     [HttpGet("{teacherId}/students")]
     public async Task<IActionResult> GetStudentsByTeacher(int teacherId)
