@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TeacherApi.Data;
 using TeacherApi.Models;
+using TeacherApi.Services.Interfaces;
 
 namespace TeacherApi.Controllers
 {
@@ -10,41 +11,40 @@ namespace TeacherApi.Controllers
     [Route("api/[controller]")]
     public class ClassroomsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IClassroomService _classroomService;
 
-        public ClassroomsController(SchoolDbContext context)
+        public ClassroomsController(IClassroomService classroomService)
         {
-            _context = context;
+            _classroomService = classroomService;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateClassroom([FromBody] Classroom classroom)
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateClassroom(string name, int? teacherId = null)
         {
-            classroom.Id = 0;
+            var classroom = new Classroom
+            {
+                Name = name,
+                TeacherId = (int)teacherId
+            };
 
-            _context.Classrooms.Add(classroom);
-            await _context.SaveChangesAsync();
+            var created = await _classroomService.CreateClassroomAsync(classroom);
 
-            var response = new
+            return Ok(new
             {
                 message = "Classroom created successfully.",
                 classroom = new
                 {
-                    classroom.Id,
-                    classroom.Name
+                    created.Id,
+                    created.Name
                 }
-            };
-
-            return Ok(response);
+            });
         }
+
 
         [HttpGet("{classroomId}/details")]
         public async Task<IActionResult> GetClassroomDetails(int classroomId)
         {
-            var classroom = await _context.Classrooms
-                .Include(c => c.Students)
-                .Include(c => c.Teacher)
-                .FirstOrDefaultAsync(c => c.Id == classroomId);
+            var classroom = await _classroomService.GetClassroomDetailsAsync(classroomId);
 
             if (classroom == null)
                 return NotFound(new { message = $"Classroom with ID {classroomId} not found." });
